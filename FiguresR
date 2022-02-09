@@ -1,0 +1,83 @@
+#Upset figure code
+
+library(UpSetR)
+
+#protein sets
+
+start_file <- "~/Proteomic/names"
+comparisons<-scan(start_file, character(), quote = "")
+start_folder <- "~/Proteomic"
+
+l = list()
+v = c()
+i <- 1
+for (comparison in comparisons) {
+  method <- comparison
+  current_string<-method
+  input_file <- paste(start_folder,comparison, sep="/")
+  current_vector <- scan(input_file, character(), quote = "")
+  
+  # print(length(current_vector))
+  #print(current_vector)
+  fake_list<- list()
+  fake_list[[method]]<- current_vector
+  l<- append(l,fake_list)
+  # l[[ val]] <- current_vector
+  v <- c(v,toString(method))
+  # print(l[[val]])
+  i <- i + 1
+}
+upset(fromList(l), nsets = length(comparisons),sets.bar.color = "#56B4E9", order.by = "freq")
+
+#heatmap code
+library(readxl)
+library(openxlsx)
+
+my_palette <- rev(colorRampPalette(RColorBrewer::brewer.pal(name = "RdBu", 11))(50))
+data <- read_excel("~/ECM 3 tissues.xlsx",
+                   col_types = c("text", "numeric", "numeric", "numeric","numeric", "numeric", "numeric"))
+counts <- as.matrix(data[,2:7])
+
+colnames(data) <- c(colnames(data[1,]))
+counts <- as.matrix(data[,2:7])
+row.names(counts) <- as.matrix(data[,1])
+colnames(counts)<- as.matrix(data[1,])
+heatmap(counts,col=my_palette)
+
+#Boxplot samples
+data <- read_excel("/home/safwen/Documents/Proteomic/Commun 3 tissue.xlsx",
+                      col_types = c("text", "numeric", "numeric", "numeric","numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric","numeric", "numeric", "numeric", "numeric", "numeric", "numeric","numeric", "numeric", "numeric", "numeric", "numeric", "numeric", "numeric","numeric", "numeric", "numeric", "numeric", "numeric", "numeric","numeric", "numeric", "numeric", "numeric", "numeric"))
+counts <- as.matrix(data[,2:35])
+
+row.names(counts) <- as.matrix(counts[,1])
+counts <- counts[rowSums(counts > 10) >= 4, ]
+log_counts <- as.matrix(log2(counts + 0.5))
+counts1 <- as.matrix(data)
+boxplot(log_counts,las=3)
+
+
+
+#PCA
+
+samples <- read_excel("~/Proteomic/Samples.xlsx",
+                      col_types = c("text", "text"))
+table(samples[,1:2])
+
+Tissue<- as.factor(samples$Tiss)
+Treatment <- as.factor(samples$Trea)
+
+expstd = t(log_counts)
+pca <- prcomp(expstd[c(1:34),])
+pca_df <- as.data.frame(pca$x)
+pca_df$Tissue <- samples$Tiss
+Treatment <- as.factor(samples$Trea)
+Treatment <- Treatment
+percentage <- round(pca$sdev / sum(pca$sdev) * 100, 2)
+percentage <- paste( colnames(pca_df), "(", paste( as.character(percentage), "%", ")", sep="") )
+theme<-theme(panel.background = element_blank(),panel.border=element_rect(fill=NA),panel.grid.major = element_blank(),panel.grid.minor = element_blank(),strip.background=element_blank(),axis.text.x=element_text(colour="black"),axis.text.y=element_text(colour="black"),axis.ticks=element_line(colour="black"),plot.margin=unit(c(1,1,1,1),"line"))
+p<-ggplot(pca_df,aes(x=PC1,y=PC2, color=Tissue, label=row.names(pca_df)))
+p<-p + geom_point(aes(shape = Treatment)) + xlab(percentage[1]) + ylab(percentage[2]) + geom_text_repel() + theme + labs(title = "PCA")
+p
+
+
+
